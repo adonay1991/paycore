@@ -1,0 +1,21 @@
+{
+  "name": "@paycore/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun dist/index.js",
+    "debug": "bun --inspect src/index.ts",
+    "debug:brk": "bun --inspect-brk src/index.ts",
+    "debug:wait": "bun --inspect-wait src/index.ts"
+  },
+  "dependencies": {
+    "hono": "catalog:",
+    "@paycore/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "catalog:"
+  }
+}
