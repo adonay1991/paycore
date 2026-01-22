@@ -1,0 +1,30 @@
+{
+  "name": "@paycore/platform",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "debug": "bun --inspect node_modules/.bin/next dev",
+    "debug:brk": "bun --inspect-brk node_modules/.bin/next dev",
+    "debug:wait": "bun --inspect-wait node_modules/.bin/next dev"
+  },
+  "dependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "next": "catalog:",
+    "iconoir-react": "catalog:",
+    "@paycore/types": "workspace:*",
+    "@paycore/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "tailwindcss": "catalog:",
+    "@tailwindcss/postcss": "catalog:",
+    "postcss": "catalog:"
+  }
+}

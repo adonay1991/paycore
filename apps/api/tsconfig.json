@@ -1,0 +1,14 @@
+{
+  "extends": "../../tooling/typescript/api.json",
+  "compilerOptions": {
+    "types": [
+      "bun-types"
+    ]
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
