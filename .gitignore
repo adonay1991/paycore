@@ -19,6 +19,8 @@ build/
 # IDEs
 .vscode/
 .idea/
+.cursor
+.claude
 
 # Temporary
 .turbo/
