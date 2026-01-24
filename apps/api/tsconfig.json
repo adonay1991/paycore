@@ -1,14 +1,8 @@
 {
   "extends": "../../tooling/typescript/api.json",
   "compilerOptions": {
-    "types": [
-      "bun-types"
-    ]
+    "types": ["@types/bun"]
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src/**/*", "drizzle.config.ts"],
+  "exclude": ["node_modules", "dist"]
 }
