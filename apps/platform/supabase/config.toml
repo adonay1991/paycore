@@ -1,0 +1,55 @@
+# Supabase Configuration for PayCore Platform
+
+[api]
+enabled = true
+port = 54521
+schemas = ["public", "extensions"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54522
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54529
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[studio]
+enabled = true
+port = 54523
+api_url = "http://127.0.0.1"
+
+[inbucket]
+enabled = true
+port = 54524
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3001"
+additional_redirect_urls = ["http://localhost:3000", "http://localhost:3001"]
+jwt_expiry = 3600
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+
+[realtime]
+enabled = true
+
+[analytics]
+enabled = false
