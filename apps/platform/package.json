@@ -3,20 +3,24 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3001",
     "build": "next build",
-    "start": "next start",
-    "debug": "bun --inspect node_modules/.bin/next dev",
-    "debug:brk": "bun --inspect-brk node_modules/.bin/next dev",
-    "debug:wait": "bun --inspect-wait node_modules/.bin/next dev"
+    "start": "next start --port 3001",
+    "debug": "bun --inspect node_modules/.bin/next dev --port 3001",
+    "debug:brk": "bun --inspect-brk node_modules/.bin/next dev --port 3001",
+    "debug:wait": "bun --inspect-wait node_modules/.bin/next dev --port 3001"
   },
   "dependencies": {
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "next": "catalog:",
-    "iconoir-react": "catalog:",
+    "@elevenlabs/elevenlabs-js": "^2.32.0",
     "@paycore/types": "workspace:*",
-    "@paycore/ui": "workspace:*"
+    "@paycore/ui": "workspace:*",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.91.0",
+    "framer-motion": "^12.29.0",
+    "iconoir-react": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@types/react": "catalog:",
