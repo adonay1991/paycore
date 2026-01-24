@@ -3,18 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "build": "next build",
-    "start": "next start",
-    "debug": "bun --inspect node_modules/.bin/next dev",
-    "debug:brk": "bun --inspect-brk node_modules/.bin/next dev",
-    "debug:wait": "bun --inspect-wait node_modules/.bin/next dev"
+    "start": "next start --port 3000",
+    "debug": "bun --inspect node_modules/.bin/next dev --port 3000",
+    "debug:brk": "bun --inspect-brk node_modules/.bin/next dev --port 3000",
+    "debug:wait": "bun --inspect-wait node_modules/.bin/next dev --port 3000"
   },
   "dependencies": {
     "react": "catalog:",
     "react-dom": "catalog:",
     "next": "catalog:",
     "iconoir-react": "catalog:",
+    "@supabase/supabase-js": "catalog:",
+    "@supabase/ssr": "catalog:",
     "@paycore/types": "workspace:*",
     "@paycore/ui": "workspace:*"
   },
