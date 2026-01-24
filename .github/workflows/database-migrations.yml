@@ -1,0 +1,330 @@
+# Database Migrations Workflow
+#
+# This workflow automatically runs database migrations when changes are
+# detected in the migrations directory. It supports multiple environments
+# (production, staging, preview) and includes safety checks.
+#
+# Triggers:
+# - Push to main branch (production)
+# - Push to staging branch (staging)
+# - Pull request (preview environment)
+# - Manual trigger with environment selection
+
+name: Database Migrations
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+    paths:
+      - 'apps/platform/supabase/migrations/**'
+      - 'apps/platform/scripts/migrate.ts'
+      - '.github/workflows/database-migrations.yml'
+
+  pull_request:
+    branches:
+      - main
+      - staging
+    paths:
+      - 'apps/platform/supabase/migrations/**'
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run migrations on'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      dry_run:
+        description: 'Dry run (check only, no changes)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  BUN_VERSION: '1.1.42'
+
+jobs:
+  # =============================================================================
+  # CHECK MIGRATIONS
+  # =============================================================================
+  check-migrations:
+    name: Check Migrations
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.check.outputs.has_changes }}
+      migration_files: ${{ steps.check.outputs.migration_files }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for migration changes
+        id: check
+        run: |
+          # Get changed migration files
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- 'apps/platform/supabase/migrations/*.sql' || echo "")
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD -- 'apps/platform/supabase/migrations/*.sql' || echo "")
+          fi
+
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "migration_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "📝 Changed migration files:"
+            echo "$CHANGED_FILES"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✅ No migration changes detected"
+          fi
+
+  # =============================================================================
+  # VALIDATE MIGRATIONS (PR only)
+  # =============================================================================
+  validate-migrations:
+    name: Validate Migrations
+    runs-on: ubuntu-latest
+    needs: check-migrations
+    if: github.event_name == 'pull_request' && needs.check-migrations.outputs.has_changes == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install
+        working-directory: apps/platform
+
+      - name: Validate SQL syntax
+        run: |
+          echo "🔍 Validating migration SQL files..."
+
+          for file in apps/platform/supabase/migrations/*.sql; do
+            echo "Checking: $file"
+            # Basic SQL syntax validation
+            if ! grep -q "CREATE\|ALTER\|INSERT\|UPDATE\|DELETE\|DROP" "$file"; then
+              echo "⚠️ Warning: $file might be empty or invalid"
+            fi
+          done
+
+          echo "✅ SQL validation complete"
+
+      - name: Check migration naming convention
+        run: |
+          echo "🔍 Checking migration naming conventions..."
+
+          INVALID_FILES=""
+          for file in apps/platform/supabase/migrations/*.sql; do
+            filename=$(basename "$file")
+            if ! [[ $filename =~ ^[0-9]{5}_[a-z0-9_]+\.sql$ ]]; then
+              INVALID_FILES="$INVALID_FILES\n$filename"
+            fi
+          done
+
+          if [ -n "$INVALID_FILES" ]; then
+            echo "❌ Invalid migration file names detected:"
+            echo -e "$INVALID_FILES"
+            echo ""
+            echo "Expected format: 00001_migration_name.sql"
+            exit 1
+          fi
+
+          echo "✅ All migration files follow naming convention"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const migrationFiles = `${{ needs.check-migrations.outputs.migration_files }}`;
+            const body = `## 🗄️ Database Migration Check
+
+            **Status:** ✅ Validation passed
+
+            ### Changed Migration Files:
+            \`\`\`
+            ${migrationFiles}
+            \`\`\`
+
+            ### Next Steps:
+            - Migrations will be applied automatically when merged
+            - Preview environment will use a fresh database
+
+            > ⚠️ **Important:** Review the SQL changes carefully before merging.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # =============================================================================
+  # RUN MIGRATIONS - STAGING
+  # =============================================================================
+  migrate-staging:
+    name: Migrate Staging
+    runs-on: ubuntu-latest
+    needs: check-migrations
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    environment: staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install
+        working-directory: apps/platform
+
+      - name: Install postgres dependency
+        run: bun add postgres
+        working-directory: apps/platform
+
+      - name: Check migration status
+        if: github.event.inputs.dry_run == 'true'
+        run: bun run scripts/migrate.ts check
+        working-directory: apps/platform
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+          ENVIRONMENT: staging
+
+      - name: Run migrations
+        if: github.event.inputs.dry_run != 'true'
+        run: bun run scripts/migrate.ts up
+        working-directory: apps/platform
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+          ENVIRONMENT: staging
+
+      - name: Show migration status
+        run: bun run scripts/migrate.ts status
+        working-directory: apps/platform
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+          ENVIRONMENT: staging
+
+  # =============================================================================
+  # RUN MIGRATIONS - PRODUCTION
+  # =============================================================================
+  migrate-production:
+    name: Migrate Production
+    runs-on: ubuntu-latest
+    needs: check-migrations
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install
+        working-directory: apps/platform
+
+      - name: Install postgres dependency
+        run: bun add postgres
+        working-directory: apps/platform
+
+      - name: Check migration status
+        if: github.event.inputs.dry_run == 'true'
+        run: bun run scripts/migrate.ts check
+        working-directory: apps/platform
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
+          ENVIRONMENT: production
+
+      - name: Run migrations
+        if: github.event.inputs.dry_run != 'true'
+        run: bun run scripts/migrate.ts up
+        working-directory: apps/platform
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
+          ENVIRONMENT: production
+
+      - name: Show migration status
+        run: bun run scripts/migrate.ts status
+        working-directory: apps/platform
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
+          ENVIRONMENT: production
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Production Migration Failed',
+              body: `## Migration Failure Alert
+
+              **Workflow:** ${context.workflow}
+              **Run ID:** ${context.runId}
+              **Commit:** ${context.sha}
+
+              Please investigate immediately.
+
+              [View workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              labels: ['bug', 'database', 'urgent']
+            });
+
+  # =============================================================================
+  # SUMMARY
+  # =============================================================================
+  migration-summary:
+    name: Migration Summary
+    runs-on: ubuntu-latest
+    needs: [check-migrations, migrate-staging, migrate-production]
+    if: always()
+
+    steps:
+      - name: Summary
+        run: |
+          echo "## 🗄️ Database Migration Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.check-migrations.outputs.has_changes }}" == "true" ]; then
+            echo "### Changed Files:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "${{ needs.check-migrations.outputs.migration_files }}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No migration changes detected." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Job Status:" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Check Migrations | ${{ needs.check-migrations.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Staging Migration | ${{ needs.migrate-staging.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Production Migration | ${{ needs.migrate-production.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
