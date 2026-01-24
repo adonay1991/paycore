@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+
+# Build output (copied from builder stage)
+dist
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Test
+coverage
+*.test.ts
+__tests__
+
+# Documentation
+*.md
+docs
+
+# Drizzle
+drizzle
+.drizzle
