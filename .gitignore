@@ -21,8 +21,12 @@ build/
 .idea/
 .cursor
 .claude
+.agents
 
 # Temporary
 .turbo/
 .next/
 .cache/
+
+# Docs
+docs/drafts
