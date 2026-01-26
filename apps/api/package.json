@@ -13,7 +13,9 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "bun run src/db/seed.ts"
+    "db:seed": "bun run src/db/seed.ts",
+    "db:reset": "bun run src/db/reset.ts",
+    "db:setup": "bun run db:push && bun run db:seed"
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.32.0",
