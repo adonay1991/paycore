@@ -845,14 +845,29 @@ export async function initiateTestCall(input: {
   agentId: string;
   phoneNumber: string;
   firstMessage?: string;
+  dynamicVariables?: {
+    contact_name?: string;
+    company_name?: string;
+    invoice_number?: string;
+    invoice_amount?: string;
+    [key: string]: string | undefined;
+  };
 }): Promise<ActionResult<{ conversationId: string | null; callSid: string | null }>> {
   try {
     const elevenLabs = getElevenLabsClient();
+
+    // Filter out undefined values from dynamic variables
+    const customData = input.dynamicVariables
+      ? Object.fromEntries(
+          Object.entries(input.dynamicVariables).filter(([, v]) => v !== undefined)
+        )
+      : undefined;
 
     const response = await elevenLabs.initiateCall({
       agentId: input.agentId,
       phoneNumber: input.phoneNumber,
       firstMessage: input.firstMessage,
+      customData,
     });
 
     return {

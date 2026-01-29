@@ -479,6 +479,12 @@ function NewCallForm({ agents, onClose }: NewCallFormProps) {
   const [isTestCall, setIsTestCall] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Test call dynamic variables
+  const [testContactName, setTestContactName] = useState('');
+  const [testCompanyName, setTestCompanyName] = useState('');
+  const [testInvoiceNumber, setTestInvoiceNumber] = useState('');
+  const [testInvoiceAmount, setTestInvoiceAmount] = useState('');
+
   // Load customers on mount
   useEffect(() => {
     getCustomersForCalls().then((result) => {
@@ -531,9 +537,17 @@ function NewCallForm({ agents, onClose }: NewCallFormProps) {
           throw new Error('Agent not configured in ElevenLabs');
         }
 
+        // Build dynamic variables for test call
+        const dynamicVariables: Record<string, string> = {};
+        if (testContactName) dynamicVariables.contact_name = testContactName;
+        if (testCompanyName) dynamicVariables.company_name = testCompanyName;
+        if (testInvoiceNumber) dynamicVariables.invoice_number = testInvoiceNumber;
+        if (testInvoiceAmount) dynamicVariables.invoice_amount = testInvoiceAmount;
+
         const result = await initiateTestCall({
           agentId: agent.elevenlabs_agent_id,
           phoneNumber,
+          dynamicVariables: Object.keys(dynamicVariables).length > 0 ? dynamicVariables : undefined,
         });
 
         if (!result.success) {
@@ -589,9 +603,51 @@ function NewCallForm({ agents, onClose }: NewCallFormProps) {
           className="rounded"
         />
         <label htmlFor="testCall" className="text-sm text-muted-foreground">
-          Test call (no tracking, no dynamic variables)
+          Test call (no tracking)
         </label>
       </div>
+
+      {isTestCall && (
+        <div className="space-y-3 p-3 rounded-lg border border-dashed bg-muted/30">
+          <p className="text-sm font-medium text-muted-foreground">
+            Dynamic Variables (for agent template)
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">contact_name</label>
+              <Input
+                placeholder="Juan Pérez"
+                value={testContactName}
+                onChange={(e) => setTestContactName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">company_name</label>
+              <Input
+                placeholder="Mi Empresa S.L."
+                value={testCompanyName}
+                onChange={(e) => setTestCompanyName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">invoice_number</label>
+              <Input
+                placeholder="F-2024-001234"
+                value={testInvoiceNumber}
+                onChange={(e) => setTestInvoiceNumber(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">invoice_amount</label>
+              <Input
+                placeholder="1.500,00"
+                value={testInvoiceAmount}
+                onChange={(e) => setTestInvoiceAmount(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {!isTestCall && (
         <>
